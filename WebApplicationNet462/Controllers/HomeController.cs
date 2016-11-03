@@ -18,11 +18,23 @@ namespace WebApplicationNet462.Controllers
         public IActionResult About()
         {
             ViewData["Message"] = "Your application description page.";
+            /* .NET Core
             var callerIdentity = User.Identity as WindowsIdentity;
             WindowsIdentity.RunImpersonated(callerIdentity.AccessToken, () => {
                 ViewData["Name"] = ($"{WindowsIdentity.GetCurrent().Name}!");
                 ViewData["List"] = sql_vData_BloombergRequest("Data Source=IAMGBLSQLUAT2;Initial Catalog=InfoPortal;Integrated Security=SSPI;");
             });
+            /* */
+
+            /* .NET 4.6 */
+            var callerIdentity = User.Identity as WindowsIdentity;
+            using (callerIdentity.Impersonate())
+            {
+                ViewData["Name"] = ($"{WindowsIdentity.GetCurrent().Name}!");
+                ViewData["List"] = sql_vData_BloombergRequest("Data Source=IAMGBLSQLUAT2;Initial Catalog=InfoPortal;Integrated Security=SSPI;");
+            }
+
+            /* */
             return View();
         }
 
