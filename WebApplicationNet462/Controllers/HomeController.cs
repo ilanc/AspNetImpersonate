@@ -5,19 +5,21 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Principal;
 using System.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 
 namespace WebApplicationNet462.Controllers
 {
     public class HomeController : Controller
     {
-        public IActionResult Index()
+        protected string _Conn;
+
+        public HomeController(IConfigurationRoot configuration)
         {
-            return View();
+            _Conn = configuration.GetConnectionString("Conn");
         }
 
-        public IActionResult About()
+        public IActionResult Index()
         {
-            ViewData["Message"] = "Your application description page.";
             /* .NET Core
             var callerIdentity = User.Identity as WindowsIdentity;
             WindowsIdentity.RunImpersonated(callerIdentity.AccessToken, () => {
@@ -30,18 +32,11 @@ namespace WebApplicationNet462.Controllers
             var callerIdentity = User.Identity as WindowsIdentity;
             using (callerIdentity.Impersonate())
             {
-                ViewData["Name"] = ($"{WindowsIdentity.GetCurrent().Name}!");
-                ViewData["List"] = sql_vData_BloombergRequest("Data Source=IAMGBLSQLUAT2;Initial Catalog=InfoPortal;Integrated Security=SSPI;");
+                ViewData["Name"] = ($"{WindowsIdentity.GetCurrent().Name}");
+                ViewData["List"] = sql_test(_Conn);
             }
 
             /* */
-            return View();
-        }
-
-        public IActionResult Contact()
-        {
-            ViewData["Message"] = "Your contact page.";
-
             return View();
         }
 
@@ -50,23 +45,25 @@ namespace WebApplicationNet462.Controllers
             return View();
         }
 
-        public class BBGDataLicenseJson
+        public class SqlTestResult
         {
-            public string Ticker { get; set; }
-            public string Mnemonic { get; set; }
-            public BBGDataLicenseJson(SqlDataReader reader)
+            public string Function { get; set; }
+            public string Username { get; set; }
+            public SqlTestResult(SqlDataReader reader)
             {
-                Ticker = Convert.IsDBNull(reader[0]) ? null : reader.GetString(0);
-                Mnemonic = Convert.IsDBNull(reader[1]) ? null : reader.GetString(1);
+                Function = Convert.IsDBNull(reader[0]) ? null : reader.GetString(0);
+                Username = Convert.IsDBNull(reader[1]) ? null : reader.GetString(1);
             }
         }
 
-        public static List<BBGDataLicenseJson> sql_vData_BloombergRequest(string connectionString)
+        public static List<SqlTestResult> sql_test(string connectionString)
         {
             var sql =
-@"select external_value as Ticker, internal_value as Mnemonic 
-from infoportal_staging.dbo.tbl_CrossReference
-where originator_id = 'BloombergRequest' and internal_value2 is null";
+@"select 'SYSTEM_USER', SYSTEM_USER
+union
+select 'ORIGINAL_LOGIN()', ORIGINAL_LOGIN()
+union
+select 'SUSER_SNAME()', SUSER_SNAME()";
 
             using (var connection = new SqlConnection(connectionString))
             {
@@ -74,10 +71,10 @@ where originator_id = 'BloombergRequest' and internal_value2 is null";
                 SqlCommand command = new SqlCommand(sql, connection);
                 using (var reader = command.ExecuteReader())
                 {
-                    var results = new List<BBGDataLicenseJson>(100);
+                    var results = new List<SqlTestResult>(100);
                     while (reader.Read())
                     {
-                        results.Add(new BBGDataLicenseJson(reader));
+                        results.Add(new SqlTestResult(reader));
                     }
                     return results;
                 }
